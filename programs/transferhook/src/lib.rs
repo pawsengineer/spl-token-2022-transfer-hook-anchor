@@ -3,7 +3,7 @@ use {
     anchor_spl::
         token_2022::spl_token_2022::{
                 extension::{
-                    transfer_hook::{TransferHookAccount},
+                    transfer_hook::TransferHookAccount,
                     BaseStateWithExtensions, StateWithExtensions,
                 },
                 state::Account as Token2022Account,
