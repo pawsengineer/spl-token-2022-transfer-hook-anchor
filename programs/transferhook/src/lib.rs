@@ -10,11 +10,9 @@ use {
             },
     spl_transfer_hook_interface::error::TransferHookError,
 };
+use spl_transfer_hook_interface::instruction::TransferHookInstruction;
 
 declare_id!("7aeu4HRHR4UwQndRDyh5f7nMwgxgH3rrtLgRntxdivZw");
-
-// Sha256(spl-transfer-hook-interface:execute)[..8]
-pub const EXECUTE_IX_TAG_LE: [u8; 8] = [105, 37, 101, 197, 75, 251, 102, 26];
 
 fn check_token_account_is_transferring(account_data: &[u8]) -> Result<()> {
 	let token_account = StateWithExtensions::<Token2022Account>::unpack(account_data)?;
@@ -40,6 +38,9 @@ pub mod transferhook {
 
     use super::*;
 
+    /// Initialize the counter account.
+    /// This function creates a new counter account and sets the owner to the authority.
+    /// The counter account is used to count the number of times the transfer hook has been invoked.
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.owner = *ctx.accounts.authority.key;
@@ -65,6 +66,9 @@ pub mod transferhook {
         Ok(())
     }
 
+    /// Initialize the extra account meta list.
+    /// This function creates a new extra account meta list and allocates the extra account PDA.
+    /// The extra account PDA is used to store the extra account meta list.
     pub fn initialize_extra_account_meta_list(ctx: Context<InitializeExtraAccountMetaList>, bump_seed: u8) -> Result<()> {
         // Create the extra account meta list.
         let account_metas = vec![
@@ -98,16 +102,14 @@ pub mod transferhook {
         Ok(())
     }
 
-    pub fn fallback<'a>(program_id: &Pubkey, accounts: &'a[AccountInfo<'a>], ix_data: &[u8]) -> Result<()> {
-        let mut ix_data: &[u8] = ix_data;
-        let sighash: [u8; 8] = {
-            let mut sighash: [u8; 8] = [0; 8];
-            sighash.copy_from_slice(&ix_data[..8]);
-            ix_data = &ix_data[8..];
-            sighash
-        };
-        match sighash {
-            EXECUTE_IX_TAG_LE => {__private::__global::transfer_hook(program_id, accounts, ix_data)},
+    /// Fallback function to handle the transfer hook instruction.
+    pub fn fallback<'a>(program_id: &Pubkey, accounts: &'a[AccountInfo<'a>], data: &[u8]) -> Result<()> {
+        let instruction = TransferHookInstruction::unpack(data)?;
+        match instruction {
+            TransferHookInstruction::Execute { amount } => {
+                let amount = amount.to_le_bytes();
+                __private::__global::transfer_hook(program_id, accounts, &amount)
+            }
             _ => Err(ProgramError::InvalidInstructionData.into()),
         }
     }
